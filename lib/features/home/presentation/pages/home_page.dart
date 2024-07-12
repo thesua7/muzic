@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 import 'package:muzic/features/home/domain/entities/song.dart';
 import 'package:muzic/features/home/presentation/bloc/audio_bloc.dart';
@@ -18,15 +19,22 @@ class HomePage extends StatelessWidget {
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: const MyAppBar(title: "P L A Y L I S T"),
       drawer: const AppDrawer(),
-      body: _buildBody(),
+      body: _buildBody(context),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(BuildContext context) {
     return BlocBuilder<AudioBloc, AudioState>(
       builder: (_, state) {
         if (state is AudioLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: SpinKitPianoWave(
+              color: Theme.of(context)
+                  .colorScheme
+                  .inversePrimary, // Customize the color as needed
+              size: 100.0, // Customize the size as needed
+            ),
+          );
         } else if (state is AudioLoaded) {
           return SongListView(songs: state.songs);
         } else if (state is AudioError) {
@@ -57,9 +65,7 @@ class SongListView extends StatelessWidget {
               songs[index].getAlbumArtworkPath(songs[index].albumArtImagePath),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const CircleAvatar(
-                child: CircularProgressIndicator(),
-              );
+              return const SizedBox();
             } else if (snapshot.hasError || !snapshot.hasData) {
               return CircleAvatar(
                 child: Image.asset(
@@ -87,17 +93,15 @@ class SongListView extends StatelessWidget {
 
               return ListTile(
                 leading: bytes.isNotEmpty
-                    ? Image.memory(
-                        bytes, width: 50, // Specify your desired width
+                    ? Image.memory(bytes,
+                        width: 50, // Specify your desired width
                         height: 50,
-                    fit: BoxFit.cover
-                      )
-                    : Image.asset(
-                        'assets/images/heda.jpg', width: 50,
+                        fit: BoxFit.cover)
+                    : Image.asset('assets/images/heda.jpg',
+                        width: 50,
                         // Specify your desired width
                         height: 50,
-                    fit: BoxFit.cover
-                      ),
+                        fit: BoxFit.cover),
                 title: Text(songs[index].displayNameWOExt),
                 subtitle: Text(songs[index].artist),
                 trailing: const Icon(Icons.more_horiz),

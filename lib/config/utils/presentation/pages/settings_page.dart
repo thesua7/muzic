@@ -13,7 +13,7 @@ class SettingsPage extends StatelessWidget {
     return Scaffold(
       appBar: const MyAppBar(title: "Settings"),
       body: Container(
-        decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary,
+        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.all(16),
         margin: const EdgeInsets.all(25),

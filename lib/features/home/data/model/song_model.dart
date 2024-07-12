@@ -3,16 +3,11 @@ import 'package:muzic/features/home/domain/entities/song.dart';
 
 class MySongModel extends Song {
   MySongModel({
-    required String displayNameWOExt,
-    required String artist,
-    required int albumArtImagePath,
-    required String audioPath,
-  }) : super(
-          displayNameWOExt: displayNameWOExt,
-          artist: artist,
-          audioPath: audioPath,
-          albumArtImagePath: albumArtImagePath,
-        );
+    required super.displayNameWOExt,
+    required super.artist,
+    required super.albumArtImagePath,
+    required super.audioPath,
+  });
 
   factory MySongModel.fromSongInfo(SongModel songInfo) {
     return MySongModel(

@@ -24,6 +24,6 @@ class Song {
     return artworkPath?.toString() ?? "";
 
     // Example placeholder:
-    return 'assets/default_artwork.png'; // Replace with your actual logic
+// Replace with your actual logic
   }
 }

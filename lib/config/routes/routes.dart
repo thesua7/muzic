@@ -7,13 +7,13 @@ class AppRoutes {
   static Route<dynamic> onGenerateRoutes(RouteSettings settings) {
     switch (settings.name) {
       case '/':
-        return _materialRoute(HomePage()); // Modify as needed
+        return _materialRoute(const HomePage()); // Modify as needed
 
       case '/settings':
-        return _materialRoute(SettingsPage());
+        return _materialRoute(const SettingsPage());
 
       default:
-        return _materialRoute(HomePage());
+        return _materialRoute(const HomePage());
     }
   }
 

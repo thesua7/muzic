@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:muzic/config/routes/routes.dart';
 import 'package:muzic/di.dart';
@@ -11,7 +12,7 @@ import 'package:provider/provider.dart';
 
 
 void main() {
-
+  debugPaintSizeEnabled = false;
   WidgetsFlutterBinding.ensureInitialized();
   initDependencies();
 

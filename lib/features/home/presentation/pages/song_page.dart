@@ -3,13 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:muzic/core/utils/conversion_utils.dart';
 import 'package:muzic/features/home/domain/entities/song.dart';
+import 'package:muzic/features/home/presentation/widgets/custom_marquee.dart';
 import 'package:muzic/features/home/presentation/widgets/neu_box.dart';
+
+
 
 class SongPage extends StatefulWidget {
   final List<Song> songs;
   final int currentIndex;
 
-  const SongPage({super.key, required this.songs, required this.currentIndex});
+  const SongPage({Key? key, required this.songs, required this.currentIndex}) : super(key: key);
 
   @override
   _SongPageState createState() => _SongPageState();
@@ -22,15 +25,22 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
   late int _currentIndex;
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
-  Offset _slideDirection = Offset.zero; // Initialize with a default value
+  Offset _slideDirection = Offset.zero;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.currentIndex;
     _audioPlayer = AudioPlayer();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _initializeAudioPlayer();
+    _loadAndPlayAudio(widget.songs[_currentIndex].audioPath);
+  }
 
-    // Listen for duration changes
+  void _initializeAudioPlayer() {
     _audioPlayer.durationStream.listen((duration) {
       if (mounted) {
         setState(() {
@@ -39,63 +49,12 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
       }
     });
 
-    // Listen for player state changes
     _audioPlayer.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed && _isRepeating) {
         _audioPlayer.seek(Duration.zero);
         _audioPlayer.play();
       }
     });
-
-    // Initialize the animation controller
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-
-    // Load the audio and artwork immediately
-    _loadAndPlayAudio(widget.songs[_currentIndex].audioPath);
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    _audioPlayer.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final song = widget.songs[_currentIndex];
-
-    // Define the slide animation based on the current index
-    _slideAnimation = Tween<Offset>(
-      begin: _slideDirection,
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(25),
-          child: Column(
-            children: [
-              _buildHeader(),
-              SlideTransition(
-                position: _slideAnimation,
-                child: _buildArtwork(song),
-              ),
-              const SizedBox(height: 25),
-              _buildPlaybackControls(),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Future<void> _loadAndPlayAudio(String audioPath) async {
@@ -108,11 +67,7 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
   }
 
   void _playPause() async {
-    if (_audioPlayer.playing) {
-      await _audioPlayer.pause();
-    } else {
-      await _audioPlayer.play();
-    }
+    _audioPlayer.playing ? await _audioPlayer.pause() : await _audioPlayer.play();
   }
 
   void _toggleRepeat() {
@@ -124,27 +79,41 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
   void _changeSong(int index) {
     if (index < 0 || index >= widget.songs.length) return;
 
-    // Determine the direction of the slide animation
-    _slideDirection = index > _currentIndex ? const Offset(1.0, 0.0) : const Offset(-1.0, 0.0);
-
     setState(() {
+      _slideDirection = index > _currentIndex ? const Offset(1.0, 0.0) : const Offset(-1.0, 0.0);
       _currentIndex = index;
+      _animationController.reset();
+      _animationController.forward();
     });
 
-    // Reset and play the animation
-    _animationController.reset();
-    _animationController.forward();
-
-    // Load and play the new audio after the animation
     _loadAndPlayAudio(widget.songs[_currentIndex].audioPath);
   }
 
-  void _nextSong() {
-    _changeSong(_currentIndex + 1);
-  }
+  void _nextSong() => _changeSong(_currentIndex + 1);
+  void _previousSong() => _changeSong(_currentIndex - 1);
 
-  void _previousSong() {
-    _changeSong(_currentIndex - 1);
+  @override
+  Widget build(BuildContext context) {
+    final song = widget.songs[_currentIndex];
+    _slideAnimation = Tween<Offset>(begin: _slideDirection, end: Offset.zero).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(25),
+          child: Column(
+            children: [
+              _buildHeader(),
+              SlideTransition(position: _slideAnimation, child: _buildSongContent(song)),
+              const SizedBox(height: 25),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildHeader() {
@@ -153,170 +122,128 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_ios_new),
-          ),
+          IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back_ios_new)),
           const Text("P L A Y L I S T"),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.menu_rounded),
-          ),
+          IconButton(onPressed: () {}, icon: const Icon(Icons.menu_rounded)),
         ],
       ),
     );
   }
 
-  Widget _buildArtwork(Song song) {
-    return FutureBuilder<String>(
-      future: song.getAlbumArtworkPath(song.albumArtImagePath),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox();
-        } else if (snapshot.hasError || !snapshot.hasData) {
-          return _buildDefaultArtwork();
-        } else {
-          Uint8List? bytes = ConversionUtils.convertToBytes(snapshot.data!);
-          return NeuBox(
-            child: Column(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: bytes!.isNotEmpty
-                      ? Image.memory(
-                    bytes,
-                    width: 300,
-                    height: 230,
-                    fit: BoxFit.cover,
-                  )
-                      : Image.asset(
-                    'assets/images/heda.jpg',
-                    width: 300,
-                    height: 230,
-                    fit: BoxFit.cover,
-                  ),
+  Widget _buildSongContent(Song song) {
+    return Column(
+      children: [
+        FutureBuilder<String>(
+          future: song.getAlbumArtworkPath(song.albumArtImagePath),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox();
+            } else if (snapshot.hasError || !snapshot.hasData) {
+              return _buildDefaultArtwork();
+            } else {
+              Uint8List? bytes = ConversionUtils.convertToBytes(snapshot.data!);
+              return NeuBox(
+                child: Column(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: bytes != null && bytes.isNotEmpty
+                          ? Image.memory(bytes, width: 300, height: 230, fit: BoxFit.cover)
+                          : Image.asset('assets/images/heda.jpg', width: 300, height: 230, fit: BoxFit.cover),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(15.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CustomMarquee(text: song.displayNameWOExt,style: const TextStyle(fontSize: 20,fontWeight: FontWeight.bold),width: 200,),
+                              Text(song.artist),
+                            ],
+                          ),
+                          const Icon(Icons.monitor_heart, color: Colors.cyan),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
+              );
+            }
+          },
+        ),
+        const SizedBox(height: 15),
+        StreamBuilder<Duration>(
+          stream: _audioPlayer.positionStream,
+          builder: (context, snapshot) {
+            final position = snapshot.data ?? Duration.zero;
+            return Column(
+              children: [
                 Padding(
-                  padding: const EdgeInsets.all(15.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            song.displayNameWOExt.split(" ")[3],
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(song.artist),
-                        ],
+                      Text(ConversionUtils.formatDuration(position)),
+                      const Icon(Icons.shuffle_rounded),
+                      IconButton(
+                        icon: Icon(
+                          _isRepeating ? Icons.repeat_rounded : Icons.repeat,
+                          color: _isRepeating ? Colors.cyan : Colors.grey,
+                        ),
+                        onPressed: _toggleRepeat,
                       ),
-                      const Icon(
-                        Icons.monitor_heart,
-                        color: Colors.cyan,
-                      ),
+                      Text(ConversionUtils.formatDuration(_duration)),
                     ],
                   ),
                 ),
+                const SizedBox(height: 4),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 0),
+                  ),
+                  child: Slider(
+                    value: position.inSeconds.toDouble(),
+                    max: _duration.inSeconds.toDouble(),
+                    onChanged: (value) async {
+                      final newPosition = Duration(seconds: value.toInt());
+                      await _audioPlayer.seek(newPosition);
+                      if (!_audioPlayer.playing) {
+                        await _audioPlayer.play();
+                      }
+                    },
+                    activeColor: Colors.cyan,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                Row(
+                  children: [
+                    Expanded(child: GestureDetector(onTap: _previousSong, child: const NeuBox(child: Icon(Icons.skip_previous_rounded)))),
+                    const SizedBox(width: 20),
+                    Expanded(flex: 2, child: GestureDetector(onTap: _playPause, child: NeuBox(child: Icon(_audioPlayer.playing ? Icons.pause : Icons.play_arrow)))),
+                    const SizedBox(width: 20),
+                    Expanded(child: GestureDetector(onTap: _nextSong, child: const NeuBox(child: Icon(Icons.skip_next_rounded)))),
+                  ],
+                ),
               ],
-            ),
-          );
-        }
-      },
+            );
+          },
+        ),
+      ],
     );
   }
 
   Widget _buildDefaultArtwork() {
     return NeuBox(
-      child: CircleAvatar(
-        child: Image.asset('assets/images/heda.jpg'),
-      ),
+      child: CircleAvatar(child: Image.asset('assets/images/heda.jpg')),
     );
   }
 
-  Widget _buildPlaybackControls() {
-    return StreamBuilder<Duration>(
-      stream: _audioPlayer.positionStream,
-      builder: (context, snapshot) {
-        final position = snapshot.data ?? Duration.zero;
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(ConversionUtils.formatDuration(position)),
-                  const Icon(Icons.shuffle_rounded),
-                  IconButton(
-                    icon: Icon(
-                      _isRepeating ? Icons.repeat_rounded : Icons.repeat,
-                      color: _isRepeating ? Colors.cyan : Colors.grey,
-                    ),
-                    onPressed: _toggleRepeat,
-                  ),
-                  Text(ConversionUtils.formatDuration(_duration)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 4),
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 0),
-              ),
-              child: Slider(
-                value: position.inSeconds.toDouble(),
-                max: _duration.inSeconds.toDouble(),
-                onChanged: (value) async {
-                  final newPosition = Duration(seconds: value.toInt());
-                  await _audioPlayer.seek(newPosition);
-                  if (!_audioPlayer.playing) {
-                    await _audioPlayer.play();
-                  }
-                },
-                activeColor: Colors.cyan,
-              ),
-            ),
-            const SizedBox(height: 15),
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _previousSong,
-                    child: const NeuBox(
-                      child: Icon(Icons.skip_previous_rounded),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  flex: 2,
-                  child: GestureDetector(
-                    onTap: _playPause,
-                    child: NeuBox(
-                      child: Icon(
-                        _audioPlayer.playing ? Icons.pause : Icons.play_arrow,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _nextSong,
-                    child: const NeuBox(
-                      child: Icon(Icons.skip_next_rounded),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
-    );
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _audioPlayer.dispose();
+    super.dispose();
   }
 }

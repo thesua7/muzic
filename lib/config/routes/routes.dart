@@ -14,9 +14,16 @@ class AppRoutes {
         return _slidePageRoute(const SettingsPage());
 
       case '/song':
-        if (settings.arguments is Song) {
-          final song = settings.arguments as Song;
-          return _slidePageRoute(SongPage(song: song));
+        if (settings.arguments is Map) {
+          final args = settings.arguments as Map<String, dynamic>;
+          if (args.containsKey('songs') && args.containsKey('currentIndex')) {
+            final songs = args['songs'] as List<Song>;
+            final currentIndex = args['currentIndex'] as int;
+            return _slidePageRoute(
+                SongPage(songs: songs, currentIndex: currentIndex));
+          } else {
+            return _slidePageRoute(const HomePage());
+          }
         } else {
           return _slidePageRoute(const HomePage());
         }

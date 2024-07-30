@@ -6,19 +6,19 @@ import 'package:muzic/features/home/domain/entities/song.dart';
 import 'package:muzic/features/home/presentation/widgets/custom_marquee.dart';
 import 'package:muzic/features/home/presentation/widgets/neu_box.dart';
 
-
-
 class SongPage extends StatefulWidget {
   final List<Song> songs;
   final int currentIndex;
 
-  const SongPage({Key? key, required this.songs, required this.currentIndex}) : super(key: key);
+  const SongPage({Key? key, required this.songs, required this.currentIndex})
+      : super(key: key);
 
   @override
   _SongPageState createState() => _SongPageState();
 }
 
-class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin {
+class _SongPageState extends State<SongPage>
+    with SingleTickerProviderStateMixin {
   late AudioPlayer _audioPlayer;
   bool _isRepeating = false;
   Duration _duration = Duration.zero;
@@ -50,9 +50,13 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
     });
 
     _audioPlayer.playerStateStream.listen((state) {
-      if (state.processingState == ProcessingState.completed && _isRepeating) {
-        _audioPlayer.seek(Duration.zero);
-        _audioPlayer.play();
+      if (state.processingState == ProcessingState.completed) {
+        if (_isRepeating) {
+          _audioPlayer.seek(Duration.zero);
+          _audioPlayer.play();
+        } else {
+          _nextSong();
+        }
       }
     });
   }
@@ -67,7 +71,9 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
   }
 
   void _playPause() async {
-    _audioPlayer.playing ? await _audioPlayer.pause() : await _audioPlayer.play();
+    _audioPlayer.playing
+        ? await _audioPlayer.pause()
+        : await _audioPlayer.play();
   }
 
   void _toggleRepeat() {
@@ -80,7 +86,9 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
     if (index < 0 || index >= widget.songs.length) return;
 
     setState(() {
-      _slideDirection = index > _currentIndex ? const Offset(1.0, 0.0) : const Offset(-1.0, 0.0);
+      _slideDirection = index > _currentIndex
+          ? const Offset(1.0, 0.0)
+          : const Offset(-1.0, 0.0);
       _currentIndex = index;
       _animationController.reset();
       _animationController.forward();
@@ -89,13 +97,22 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
     _loadAndPlayAudio(widget.songs[_currentIndex].audioPath);
   }
 
-  void _nextSong() => _changeSong(_currentIndex + 1);
+  void _nextSong() {
+    if (_currentIndex < widget.songs.length - 1) {
+      _changeSong(_currentIndex + 1);
+    } else {
+      // If we're at the last song, stop playing
+      _audioPlayer.stop();
+    }
+  }
+
   void _previousSong() => _changeSong(_currentIndex - 1);
 
   @override
   Widget build(BuildContext context) {
     final song = widget.songs[_currentIndex];
-    _slideAnimation = Tween<Offset>(begin: _slideDirection, end: Offset.zero).animate(
+    _slideAnimation =
+        Tween<Offset>(begin: _slideDirection, end: Offset.zero).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
@@ -107,7 +124,8 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
           child: Column(
             children: [
               _buildHeader(),
-              SlideTransition(position: _slideAnimation, child: _buildSongContent(song)),
+              SlideTransition(
+                  position: _slideAnimation, child: _buildSongContent(song)),
               const SizedBox(height: 25),
             ],
           ),
@@ -122,7 +140,9 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_back_ios_new)),
+          IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_ios_new)),
           const Text("P L A Y L I S T"),
           IconButton(onPressed: () {}, icon: const Icon(Icons.menu_rounded)),
         ],
@@ -148,8 +168,10 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: bytes != null && bytes.isNotEmpty
-                          ? Image.memory(bytes, width: 300, height: 230, fit: BoxFit.cover)
-                          : Image.asset('assets/images/heda.jpg', width: 300, height: 230, fit: BoxFit.cover),
+                          ? Image.memory(bytes,
+                              width: 300, height: 230, fit: BoxFit.cover)
+                          : Image.asset('assets/images/heda.jpg',
+                              width: 300, height: 230, fit: BoxFit.cover),
                     ),
                     Padding(
                       padding: const EdgeInsets.all(15.0),
@@ -159,7 +181,12 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              CustomMarquee(text: song.displayNameWOExt,style: const TextStyle(fontSize: 20,fontWeight: FontWeight.bold),width: 200,),
+                              CustomMarquee(
+                                text: song.displayNameWOExt,
+                                style: const TextStyle(
+                                    fontSize: 20, fontWeight: FontWeight.bold),
+                                width: 200,
+                              ),
                               Text(song.artist),
                             ],
                           ),
@@ -201,7 +228,8 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
                 const SizedBox(height: 4),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 0),
+                    thumbShape:
+                        const RoundSliderThumbShape(enabledThumbRadius: 0),
                   ),
                   child: Slider(
                     value: position.inSeconds.toDouble(),
@@ -219,11 +247,26 @@ class _SongPageState extends State<SongPage> with SingleTickerProviderStateMixin
                 const SizedBox(height: 15),
                 Row(
                   children: [
-                    Expanded(child: GestureDetector(onTap: _previousSong, child: const NeuBox(child: Icon(Icons.skip_previous_rounded)))),
+                    Expanded(
+                        child: GestureDetector(
+                            onTap: _previousSong,
+                            child: const NeuBox(
+                                child: Icon(Icons.skip_previous_rounded)))),
                     const SizedBox(width: 20),
-                    Expanded(flex: 2, child: GestureDetector(onTap: _playPause, child: NeuBox(child: Icon(_audioPlayer.playing ? Icons.pause : Icons.play_arrow)))),
+                    Expanded(
+                        flex: 2,
+                        child: GestureDetector(
+                            onTap: _playPause,
+                            child: NeuBox(
+                                child: Icon(_audioPlayer.playing
+                                    ? Icons.pause
+                                    : Icons.play_arrow)))),
                     const SizedBox(width: 20),
-                    Expanded(child: GestureDetector(onTap: _nextSong, child: const NeuBox(child: Icon(Icons.skip_next_rounded)))),
+                    Expanded(
+                        child: GestureDetector(
+                            onTap: _nextSong,
+                            child: const NeuBox(
+                                child: Icon(Icons.skip_next_rounded)))),
                   ],
                 ),
               ],
